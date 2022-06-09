@@ -1,0 +1,43 @@
+#!/bin/bash
+### get the raw-sbn data: raw-sbn and corresponding sentences... ###
+#cd SBN-data
+#wget "https://pmb.let.rug.nl/releases/pmb-4.0.0.zip"
+#unzip pmb-4.0.0.zip
+#mv pmb-4.0.0 4.0.0
+#rm pmb-4.0.0.zip
+
+cd 4.0.0/data/en
+
+for type in gold silver; do
+  cd ${type}/
+   find ./${*}/${*}/ -type f -name "en.drs.sbn" | xargs -I{} sh -c "cat {}; echo ''" > sbn.txt
+   python /home/p289796/SBN-data/SBN_data_preprocess/0_get_raw_file.py -i sbn.txt -ipath ./
+  cd -
+done
+
+#for type in gold silver; do
+#  cd ${type}/
+#   find ./${*}/${*}/ -type f -name "en.raw" | xargs -I{} sh -c "cat {}; echo ''" > sbn.raw
+#   grep -v "^$" sbn.raw > sbn.txt.raw
+##   find ./${*}/${*}/ -type f -name "en.raw" -exec cat {} \;> sbn.raw.txt
+#  cd -
+#done
+
+# get train, dev, test
+#cd gold
+#{ head -n$(( $(wc -l < sbn.txt.raw) * 2 / 10)) > other.txt.raw; cat > train.txt.raw; } < sbn.txt.raw
+#{ head -n$(( $(wc -l < other.txt.raw) * 5 / 10)) > test.txt.raw; cat > dev.txt.raw; } < other.txt.raw
+#{ head -2000 > other.txt.raw; cat > train.txt.raw; } < sbn.txt.raw
+#{ head -1000 > test.txt.raw; cat > dev.txt.raw; } < other.txt.raw
+cd gold
+python /home/p289796/SBN-data/SBN_data_preprocess/1_split_sbn_data.py -i sbn.txt -o1 other.txt -o2 train.txt -n 2000
+python /home/p289796/SBN-data/SBN_data_preprocess/1_split_sbn_data.py -i other.txt -o1 test.txt -o2 dev.txt -n 1000
+cd ..
+
+# Gold + silver
+mkdir -p gold_silver
+cat gold/train.txt silver/sbn.txt > gold_silver/train.txt
+cat gold/train.txt.raw silver/sbn.txt.raw > gold_silver/train.txt.raw
+cp gold/test* gold_silver/
+cp gold/dev* gold_silver/
+
