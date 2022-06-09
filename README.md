@@ -17,7 +17,6 @@ If you want to get the data from scratch, please use the following steps, if the
 ## 1.download data from PMB, for other version data, you can access https://pmb.let.rug.nl/data.php
 wget https://pmb.let.rug.nl/releases/pmb-4.0.0.zip
 
-
 ## 2. process data to make different language (en, it, nl, de) and different types (gold, silver, bronze) data in different files.
 sh set_up.sh
 
