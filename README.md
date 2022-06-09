@@ -1,5 +1,5 @@
 # DRG-generation-Dutch
-This repository shows the work for poster ["Comparing Neural Meaning-to-Text Approaches for Dutch"] (https://github.com/wangchunliu/DRG-generation-Dutch/blob/main/poster_for_CLIN.pdf) in CLING 2022 conference.
+This repository shows the work for poster " [Comparing Neural Meaning-to-Text Approaches for Dutch"](https://github.com/wangchunliu/DRG-generation-Dutch/blob/main/poster_for_CLIN.pdf) " in CLING 2022 conference.
 
 
 ### INTRODUCTION
@@ -9,7 +9,7 @@ This repository shows the work for poster ["Comparing Neural Meaning-to-Text App
 - 3. stacking LSTM with GCN model
 
 ### DATA
-All the data preprocess file in the folder ["data_preprocess"] (https://github.com/wangchunliu/DRG-generation-Dutch/tree/main/data_preprocess).
+All the data preprocess file in the folder " [data_preprocess](https://github.com/wangchunliu/DRG-generation-Dutch/tree/main/data_preprocess) ".
 This folder looks very cluttered.
 If you want to get the data from scratch, please use the following steps, if there are errors, please tell me.
 
