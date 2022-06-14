@@ -1,5 +1,5 @@
 # DRG-generation-Dutch
-This repository shows the work for poster " [Comparing Neural Meaning-to-Text Approaches for Dutch"](https://github.com/wangchunliu/DRG-generation-Dutch/blob/main/poster_for_CLIN.pdf) " in CLING 2022 conference.
+This repository shows the work for poster " [Comparing Neural Meaning-to-Text Approaches for Dutch"](https://github.com/wangchunliu/DRG-generation-Dutch/blob/main/poster_for_CLIN.pdf) " in CLIN 2022 conference.
 
 
 ### INTRODUCTION
