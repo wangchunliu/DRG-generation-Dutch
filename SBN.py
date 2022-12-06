@@ -35,17 +35,6 @@ def add_tuple(simple_sbn, id_cur_sbn, cur_sbn, tuple_sbn, nodes_sbn, index):
             tuple_sbn.append([cur_sbn[0], cur_sbn[j + 1], cur_sbn[j + 2]])
     return tuple_sbn, nodes_sbn
 
-def get_topic(simple_sbn, id_cur_sbn, cur_sbn, index):
-    TOPIC=''
-    verb_role_list = ['Agent', 'Patient', 'Theme', 'Experiencer', 'Causer', 'Result', 'Source']
-    for j in range(index, len(cur_sbn) - 2, 2):
-        if cur_sbn[j + 1] in verb_role_list and is_number(cur_sbn[j + 2]) and re.search("\-", cur_sbn[j + 2]):
-            try:
-                TOPIC= simple_sbn[id_cur_sbn + int(cur_sbn[j + 2])][0].strip()
-            except:
-                continue
-    return TOPIC
-
 class SBNData:
     def __init__(self, words, traverse, graph_edge, graph_noedge, graph_seq):
         self.idx = 0
@@ -83,7 +72,6 @@ class SBNData:
         #        self.matrix[3, i, j] = 1
         #        self.matrix[4, j, i] = 1
 
-
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.annotation)
 
@@ -110,20 +98,24 @@ class SBNData:
 def parse(line):
     tuple_sbn = []
     nodes_sbn = []
+    edges = []
+    edges_novar = []  ## no edge nodes
+    edges_seqvar = []  ## only for seqence edge
     # -------------------------------------------------------------------
     redundant_line = []  # 冗余的序列，增加了Box信息
     box_number = 0
     for cur_sbn in line:
-        if len(redundant_line) == 0 and len(cur_sbn) != 2:
+        if len(redundant_line) == 0:
             box_number += 1
-            redundant_line.append(['ROOT', 'bos' + str(box_number)])
+            redundant_line.append(['BOS' + str(box_number)])
         if len(cur_sbn) == 2:
+            redundant_line.append(cur_sbn)
             box_number += 1
-            redundant_line.append([cur_sbn[0], 'bos' + str(box_number)])
+            redundant_line.append(['BOS' + str(box_number)])
         else:
             redundant_line.append(cur_sbn)
     # --------------------------------------------------------------------
-    vocab_list = []# 如果列表中的元素重复则更新，使其每个元素都独一无二
+    vocab_list = []  # 如果列表中的元素重复则更新，使其每个元素都独一无二
     new_redundant_line = []
     for i, cur_sbn in enumerate(redundant_line):
         new_cur_sbn = cur_sbn
@@ -133,20 +125,19 @@ def parse(line):
             elif item not in vocab_list:
                 vocab_list.append(item)
             elif item in vocab_list:
-                new_cur_sbn[j] = cur_sbn[j] + '^' * (i+j)
+                new_cur_sbn[j] = cur_sbn[j] + '^' * i + '*' * j
         new_redundant_line.append(new_cur_sbn)
     # --------------------------------------------------------------------
     # 简化的数据: 没有BOS 和 Negation 信息 # 得到所有的三元组
     simple_line = [x for x in new_redundant_line if (x[0].isupper() == False)] # 简化的序列，没有Negation 信息
-    
-    if_TOPIC='' ### set TOPIC to SBN data
+    box_relation = [x[0] for x in new_redundant_line if (x[0].isupper() == True) or ('BOS' in x[0])]
     for i, cur_sbn in enumerate(simple_line):
         nodes_sbn.append(cur_sbn[0])
         if len(cur_sbn) == 1:
             continue
         elif ("Name" in cur_sbn[1] or "EQU" in cur_sbn[1]) and include_quotes(cur_sbn[2]):
             nodes_sbn.append(cur_sbn[1])
-            if between_quotes(cur_sbn[2]) or between_quotes(cur_sbn[2].strip('^')):
+            if between_quotes(cur_sbn[2]) or between_quotes(cur_sbn[2].strip('*').strip('^')):
                 nodes_sbn.append(cur_sbn[2])
                 tuple_sbn.append([cur_sbn[0], cur_sbn[1], cur_sbn[2]])
                 end_index = 2
@@ -154,7 +145,7 @@ def parse(line):
                 nodes_sbn.append(cur_sbn[2])
                 tuple_sbn.append([cur_sbn[0], cur_sbn[1], cur_sbn[2]])
                 for nn in range(3, len(cur_sbn), 1):
-                    if cur_sbn[nn].endswith('"') or cur_sbn[nn].strip('^').endswith('"'):
+                    if cur_sbn[nn].endswith('"') or cur_sbn[nn].strip('*').strip('^').endswith('"'):
                         end_index = nn
                         for index in range(2, end_index):
                             nodes_sbn.append(cur_sbn[index+1])
@@ -164,22 +155,11 @@ def parse(line):
                 tuple_sbn, nodes_sbn = add_tuple(simple_line, i, cur_sbn, tuple_sbn, nodes_sbn, index=end_index)
         else:
             tuple_sbn, nodes_sbn = add_tuple(simple_line, i, cur_sbn, tuple_sbn, nodes_sbn,index=0)
-        ###### 判断active and passive, give " Concept TOPIC <1" information.
-        role_list1 = ['Time', 'Agent', 'Patient']
-        role_list2 = ['Time', 'Agent', 'Theme']
-        role_list3 = ['Time', 'Agent', 'Experiencer']
-        role_list4 = ['Time', 'Agent', 'Result']
-        role_list5 = ['Time', 'Agent', 'Source']
-        role_list6 = ['Time', 'Causer', 'Patient']
-        #if set(role_list1) < set(cur_sbn) or set(role_list2) < set(cur_sbn) or \
-         #           set(role_list3) < set(cur_sbn) or set(role_list4) < set(cur_sbn) or \
-          #          set(role_list5) < set(cur_sbn) or set(role_list6) < set(cur_sbn):
-           # if_TOPIC = get_topic(simple_line, i, cur_sbn, index=0)
-    # --------------------------------------------------------------------
+            # --------------------------------------------------------------------
+    temp_nodes_sbn = nodes_sbn + box_relation
+    old_nodes_sbn = [x for y in new_redundant_line for x in y]
+    new_nodes_sbn = [x for x in old_nodes_sbn if x in temp_nodes_sbn]
     # 得到tuple_sbn中的二元组
-    edges =[] ## edge become nodes
-    edges_novar = [] ## no edge nodes
-    edges_seqvar = [] ## only for seqence edge
     for tuple in tuple_sbn:
         if len(tuple)>2:
             edges.append([tuple[0], tuple[1]])
@@ -188,7 +168,6 @@ def parse(line):
         else:
             edges.append([tuple[0], tuple[1]])
             edges_novar.append([tuple[0], tuple[1]])
-
     ### add sequence order edge
     for i, cur_sbn in enumerate(line):
         if i > 0:
@@ -196,36 +175,21 @@ def parse(line):
         else:
             continue
     ### add BOS and NEAGTION edges
-    sbn = new_redundant_line
-    temp_node = ''
-    temp_edge = ''
-    for i, cur_sbn in enumerate(sbn):
-        if i == 0:
-            temp_node = cur_sbn[0]
-            temp_edge = cur_sbn[1]
-            nodes_sbn.append(cur_sbn[0])
-            nodes_sbn.append(cur_sbn[1])
-        elif len(cur_sbn) == 2:
-            edges.append([temp_node, temp_edge])
-            edges.append([temp_edge, cur_sbn[0]])
-            edges_novar.append([temp_node, cur_sbn[0]])
-            temp_node = cur_sbn[0]
-            temp_edge = cur_sbn[1]
-            nodes_sbn.append(cur_sbn[0])
-            nodes_sbn.append(cur_sbn[1])
-        elif cur_sbn[0] != if_TOPIC:
-            edges.append([temp_node, temp_edge])
-            edges.append([temp_edge, cur_sbn[0]])
-            edges_novar.append([temp_node, cur_sbn[0]])
-        elif cur_sbn[0] == if_TOPIC:  ### add TOPIC : 判断active and passive
-            edges.append([temp_node, 'TOPIC'])
-            edges.append(['TOPIC', cur_sbn[0]])
-            nodes_sbn.append('TOPIC')
-            edges_novar.append([temp_node, cur_sbn[0]])
+    sbn = new_redundant_line 
+    temp = ''
+    for i, item in enumerate(sbn):
+        for j, x in enumerate(item):
+            if 'BOS' in x:
+                temp = x
+            elif j == 0:
+                edges.append([temp, x])
+    for i in range(len(sbn) - 1):
+        if len(sbn[i]) == 2:
+            edges.append([sbn[i][0], sbn[i + 1][0]])
     # ---------------------------------------------------------
     ### nodes_sbn: 没有 +1 和 -1 这些指向信息，但是有Bos和Negation信息，用于得到数据中每个word的id ###
     idxmap = {}
-    for i, item in enumerate(nodes_sbn):
+    for i, item in enumerate(new_nodes_sbn):
         idxmap[item] = i
     # ---------------------------------------------------------
     edges_all = []
@@ -258,7 +222,7 @@ def parse(line):
     if (-1, 0) not in edges_seq:
         edges_seq = [(-1, 0)] + edges_seq
     # ---------------------------------------------------------
-    traverse = [x.strip('^').strip('"') for x in nodes_sbn]
+    traverse = [x.strip('^').strip('"') for x in new_nodes_sbn]
     return traverse, edges_all, edges_noedge, edges_seq
 
 def split_sbn_list(list):
@@ -287,7 +251,7 @@ def extract_SBN_features(line):
 line1 = [['NEGATION', '-1'], ['cut.v.01', 'Time', '+1', 'Agent', '+2', 'Patient', '+3'], ['time.n.08', 'EQU', 'now'], ['person.n.01'], ['ginger.n.02']]
 line2 = [['general_election.n.01'], ['country.n.02', 'Name', '"Denmark"'], ['male.n.02', 'Name', '"Poul', 'Schlüter"'], ['coalition.n.01'],['time.n.08', 'TPR', 'now'], ['party.n.01', 'Name', '"Danish', 'Social', 'Liberal', 'Party"'], ['leave.v.01', 'Theme', '-1']]
 line4 = ['male.n.02', 'Name', 'NAMEname0', '***', 'leave.v.01', 'Theme', '-1', 'Time', '+1', 'Destination', '+2', '***', 'time.n.08', 'TPR', 'now', 'TIN', '+3', '***', 'city.n.01', 'Name', '"Boston"', '***', 'day.n.03', '***', 'day.n.03', 'TAB', '-1', '***', 'terra_incognita.n.01', 'EQU', 'now', 'TIN', '-2']
-line5 = ['NEGATION', '-1', '***','person.n.01', '***', 'name.v.01', 'Agent', '-1', 'Time', '+1', 'Theme', '+3', 'Result', '+4', '***', 'time.n.08', 'TPR', 'now', '***', 'female.n.02', '***', 'baby.n.01', 'Creator', '-1', '***', 'name.n.01', 'EQU', '"Jane"']
+line5 = ['NEGATION', '-1', '***','person.n.01', '***', 'name.v.01', 'Agent', '-1', 'Time', '+1', 'Theme', '+3', 'Result', '+4', '***', 'time.n.08', 'TPR', 'now', '***', 'baby.n.01', '***', 'name.n.01', 'EQU', '"Jane', 'Johan"']
 line6 = ['NEGATION', '-1', '***', 'male.n.02', '***', 'time.n.08', 'EQU', 'now', '***', 'play.v.01', 'Agent', '-2', 'Time', '-1', 'Theme', '+1', '***', 'monopoly.n.03']
 
 import codecs
@@ -305,3 +269,4 @@ def make_SBN_iterator_from_file(path):
 # print(graph1.traverse)
 # print(graph1.parents)
 # print(graph1.annotation)
+#
